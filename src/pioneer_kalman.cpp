@@ -8,6 +8,10 @@ int main(int argc, char **argv)
 
     Kalman kalman;
 
+    // kalman.landmark_location();
+
+    // kalman.init_matrix(kalman.mean, kalman.cov);
+
     kalman.pub_goal = nh.advertise<std_msgs::Bool>("/chk_goal", 1);
     kalman.pub_pose = nh.advertise<geometry_msgs::Pose>("/kalman_mean",1);
     kalman.pub_robot_pose = nh.advertise<geometry_msgs::Pose>("/robot_pose", 1);
@@ -19,6 +23,8 @@ int main(int argc, char **argv)
     // kalman.pub_pose = nh.advertise<
 
     kalman.kalman_exec();
+
+    ros::spin();
 
     return 0;
 }

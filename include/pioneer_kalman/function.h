@@ -48,8 +48,10 @@ public:
     {
         double time = 0.0;
 
-        landmark_location();
+        std::cout << "kalman_exec()" << std::endl;
 
+        landmark_location();
+        
         cv::Mat mean = cv::Mat::zeros(size, 1, CV_64F);
         cv::Mat cov = cv::Mat::zeros(size, size, CV_64F);
 
@@ -65,7 +67,7 @@ public:
 
             std::cout << "time: " << time << std::endl;
 
-            ros::spinOnce();
+            // ros::spinOnce();
 
             rate.sleep();
         }
@@ -76,7 +78,6 @@ public:
     {
         double state2landmark;
         
-        landmark_location();
 
         update_index();
 
@@ -194,8 +195,11 @@ public:
                 lm.x = 0.6;
                 lm.y = 0.0;
             }
-            lm.x = i;
-            lm.y = 0;
+            else
+            {
+                lm.x = i;
+                lm.y = 0;
+            }
 
             lm_vec.push_back(lm);
         }
@@ -514,7 +518,7 @@ public:
         next_index = false;
         see_marker = false;
 
-        landmark_num = 10;
+        landmark_num = 1;
         size = 3 + 2 * landmark_num;
         cur_dest_landmark = 1;
     
