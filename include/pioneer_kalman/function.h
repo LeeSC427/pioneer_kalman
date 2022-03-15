@@ -93,7 +93,7 @@ public:
     {
         // double state2landmark;
         
-
+        std::cout << "==================================" << turning << std::endl;
         update_index();
 
         landmark lm;
@@ -606,13 +606,14 @@ public:
         //BEFORE TURN
         if(is_prev)
         {
-                temp_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
-                temp_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
-            // if( -CV_PI / 4.0 <= mean.at<double>(2,0) <= CV_PI / 4.0)
-            // else if(-CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
-            //     mean.at<double>(1,0) += robot2camera;
-            // else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
-            //     mean.at<double>(0,0) += robot2camera;
+                // temp_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
+                // temp_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
+            if( -CV_PI / 4.0 <= mean.at<double>(2,0) <= CV_PI / 4.0)
+                mean.at<double>(0,0) -= robot2camera;
+            else if(-CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+                mean.at<double>(1,0) += robot2camera;
+            else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
+                mean.at<double>(0,0) += robot2camera;
 
             std::cout << "============= BEFORE TURN ==============" << std::endl;
         }
