@@ -36,10 +36,10 @@ public:
     bool initial_cmd_vel;
     bool is_goal;
     bool chk_marker; //to increase landmark index
-    bool next_index;
     bool see_marker;
     bool is_prev;
     bool is_after;
+    bool index_flag;
 
     int landmark_num;
     int size;
@@ -187,7 +187,12 @@ public:
 
     void get_index_info(const std_msgs::Bool::ConstPtr& msg)
     {
-        next_index = msg->data;
+        bool next_index = msg->data;
+        if(next_index)
+        {
+            index_flag = true;
+            update_index();
+        }
     }
 
     void is_seen(const std_msgs::Bool::ConstPtr& msg)
@@ -211,8 +216,11 @@ public:
 
     void update_index()
     {
-        if(next_index)
+        if(index_flag)
+        {
             cur_dest_landmark++;
+            index_flag = false;
+        }
     }
 
 // =====================================================================//
@@ -612,8 +620,8 @@ public:
         cv::Mat rb_mean = cv::Mat::zeros(3, 1, CV_64F);
 
 
-        rb_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
-        rb_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
+        rb_mean.at<double>(0,0) = mean.at<double>(0,0);
+        rb_mean.at<double>(1,0) = mean.at<double>(1,0);
         rb_mean.at<double>(2,0) = mean.at<double>(2,0);
 
         return rb_mean;
@@ -639,6 +647,7 @@ public:
         see_marker = false;
         is_prev = false;
         is_after = false;
+        index_flag = false;
         
         landmark_num = 11;
         size = 3 + 2 * landmark_num;
