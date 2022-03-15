@@ -96,8 +96,8 @@ public:
 
         landmark lm;
 
-        if(cur_dest_landmark <= landmark_num)
-        {
+        // if(cur_dest_landmark <= landmark_num)
+        // {
             for(int i = 0; i < landmark_num; i++)
             {
                 if(cur_dest_landmark == lm_vec[i].index)
@@ -109,6 +109,9 @@ public:
             cv::Mat Fx = get_Fx();
             
             cv::Mat predicted_mean = mean_prediction(mean, Fx);
+            
+            std::cout << predicted_mean.at<double>(0,0) << std::endl;
+
             cv::Mat predicted_cov = cov_prediction(mean, cov, Fx);
             
             if(see_marker)
@@ -143,12 +146,12 @@ public:
             publish_odom(mean);
 
             publish_robot_pose(rb_pose);
-        }
-        else
-        {
-            std::cout << "====================== MEAN ======================" << std::endl << mean << std::endl;
+        // }
+        // else
+        // {
+            std::cout << "=================== MEAN ===================" << std::endl << mean << std::endl;
             std::cout << "=================== COVARIANCE ===================" << std::endl << cov << std::endl;
-        }
+        // }
 
     }
 
@@ -163,7 +166,7 @@ public:
         lin_vel = msg->linear.x;
         ang_vel = msg->angular.z;
 
-        std::cout << lin_vel << std::endl;
+        // std::cout << lin_vel << std::endl;
 
         if(!initial_cmd_vel)
             interval = cur_time - prev_time;
@@ -172,7 +175,7 @@ public:
 
         prev_time = cur_time;
 
-        std::cout << "TIME INTERVAL: " << interval << std::endl;
+        // std::cout << "TIME INTERVAL: " << interval << std::endl;
     }
 
     void get_distance2marker(const geometry_msgs::Twist::ConstPtr& msg)
@@ -281,7 +284,7 @@ public:
 
             lm_vec.push_back(lm);
         }
-        std::cout << "landmark_location" << std::endl;
+        // std::cout << "landmark_location" << std::endl;
     }
 
 // =====================================================================//
@@ -302,9 +305,9 @@ public:
             cov.at<double>(i, i) = 0.025;
         }
 
-        std::cout << mean.at<double>(2,0) << std::endl;
+        // std::cout <<  mean.at<double>(2,0) << std::endl;
 
-        std::cout << "init_matrix" << std::endl;
+        // std::cout << "init_matrix" << std::endl;
     }
 
 // =====================================================================//
@@ -319,7 +322,7 @@ public:
         Fx.at<double>(1,1) = 1.0;
         Fx.at<double>(2,2) = 1.0;
 
-        std::cout << "get_Fx" << std::endl;
+        // std::cout << "get_Fx" << std::endl;
 
         return Fx;
     }
@@ -338,7 +341,7 @@ public:
         mat_temp.at<double>(1,0) = lin_vel * interval * sin(mean.at<double>(2,0) + ang_vel * interval / 2.0);
         mat_temp.at<double>(2,0) = ang_vel * interval;
 
-        std::cout << "mean_prediction" << std::endl;
+        // std::cout << "mean_prediction" << std::endl;
 
         return mean + Fx.t() * mat_temp;
     }
@@ -349,11 +352,11 @@ public:
         Axk.at<double>(0,2) = -lin_vel * interval * sin(mean.at<double>(2,0) + ang_vel * interval /2.0);
         Axk.at<double>(1,2) = lin_vel * interval * cos(mean.at<double>(2,0) + ang_vel * interval /2.0);
         
-        std::cout << "Axk_fin" << std::endl;
+        // std::cout << "Axk_fin" << std::endl;
         std::cout << Fx.t() << std::endl;
         cv::Mat Ak = cv::Mat::eye(size, size, CV_64F) + Fx.t() * Axk * Fx;
         
-        std::cout << "Ak fin" << std::endl;
+        // std::cout << "Ak fin" << std::endl;
 
         cv::Mat Wk = cv::Mat::zeros(size, 2, CV_64F);
         Wk.at<double>(0,0) = cos(mean.at<double>(2,0) + ang_vel * interval / 2.0) / 2.0 - (lin_vel * sin(mean.at<double>(2,0) + ang_vel * interval / 2.0)) / (2.0 * robot_width);
@@ -367,9 +370,9 @@ public:
         Q.at<double>(0,0) = Kr * abs(interval * (2.0 * lin_vel + robot_width * ang_vel)) / 2.0;
         Q.at<double>(1,1) = Kl * abs(interval * (2.0 * lin_vel - robot_width * ang_vel)) / 2.0;
 
-        std::cout << "===================== Q ===================" << std::endl << Q << std::endl;
+        // std::cout << "===================== Q ===================" << std::endl << Q << std::endl;
 
-        std::cout << "cov_prediction" << std::endl;
+        // std::cout << "cov_prediction" << std::endl;
         
         return Ak * cov * Ak.t() + Wk * Q * Wk.t();
     }
@@ -384,7 +387,7 @@ public:
         h.at<double>(0,0) = dist;
         h.at<double>(1,0) = atan2(y_dist2landmark, x_dist2landmark) - mean.at<double>(2,0);
 
-        std::cout << "measurement_model" << std::endl;
+        // std::cout << "measurement_model" << std::endl;
 
         return h;
     }
@@ -420,7 +423,7 @@ public:
         Fxj.at<double>(3, 2 * cur_dest_landmark + 1) = 1.0;
         Fxj.at<double>(4, 2 * cur_dest_landmark + 2) = 1.0;
 
-        std::cout << "jacobian" << std::endl;
+        // std::cout << "jacobian" << std::endl;
 
         return low_Ht * Fxj;
     }
@@ -437,7 +440,7 @@ public:
 
         cv::Mat S = H * predict_cov * H.t() + R;
 
-        std::cout << "get_gain" << std::endl;
+        // std::cout << "get_gain" << std::endl;
 
         return predict_cov * H.t() * S.inv();
     }
@@ -454,12 +457,7 @@ public:
 
         cv::Mat v = Z - h;
 
-        std::cout << "mean_correction" << std::endl;
-
-        std::cout << "PM: " << std::endl << predict_mean << std::endl;
-        std::cout << "GAIN: " <<std::endl << K << std::endl;
-        std::cout << "V: " <<std::endl << v << std::endl;
-        
+        // std::cout << "mean_correction" << std::endl;
 
         return predict_mean + K * v;
     }
@@ -468,7 +466,7 @@ public:
     {
         cv::Mat I = cv::Mat::eye(size,size,CV_64F);
 
-        std::cout << "cov_correction" << std::endl;
+        // std::cout << "cov_correction" << std::endl;
 
         return (I - K * J) * predict_cov;
     }
@@ -479,7 +477,7 @@ public:
 
     double dist2landmark(double x_dist, double y_dist)
     {
-        std::cout << "dist2landmark" << std::endl;
+        // std::cout << "dist2landmark" << std::endl;
 
         return sqrt(pow(x_dist, 2) + pow(y_dist, 2));
     }
