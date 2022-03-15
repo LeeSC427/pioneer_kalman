@@ -41,6 +41,7 @@ public:
     bool is_after;
     bool index_flag;
     bool next_index;
+    bool turning;
 
     int landmark_num;
     int size;
@@ -601,15 +602,17 @@ public:
             mean.at<double>(2,0) = CV_PI - temp_ang;
         }
 
+        cv::Mat temp_mean = cv::Mat::zeros(size, 1, CV_64F);
         //BEFORE TURN
         if(is_prev)
         {
-            if( -CV_PI / 4.0 <= mean.at<double>(2,0) <= CV_PI / 4.0)
-                mean.at<double>(0,0) -= robot2camera;
-            else if(-CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
-                mean.at<double>(1,0) += robot2camera;
-            else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
-                mean.at<double>(0,0) += robot2camera;
+                temp_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
+                temp_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
+            // if( -CV_PI / 4.0 <= mean.at<double>(2,0) <= CV_PI / 4.0)
+            // else if(-CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+            //     mean.at<double>(1,0) += robot2camera;
+            // else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
+            //     mean.at<double>(0,0) += robot2camera;
 
             std::cout << "============= BEFORE TURN ==============" << std::endl;
         }
@@ -617,9 +620,9 @@ public:
         if(is_after)
         {
             if( -CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
-                mean.at<double>(1,0) -= robot2camera;
+                temp_mean.at<double>(1,0) -= robot2camera;
             else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
-                mean.at<double>(0,0) -= robot2camera;
+                temp_mean.at<double>(0,0) -= robot2camera;
 
             std::cout << "============= AFTER TURN ==============" << std::endl;
         }
@@ -633,10 +636,24 @@ public:
     {
         cv::Mat rb_mean = cv::Mat::zeros(3, 1, CV_64F);
 
+        cv::Mat temp_mean = cv::Mat::zeros(3, 1, CV_64F);
+        
+        if(is_prev)
+        {
+            turning = true;
+        }
 
-        rb_mean.at<double>(0,0) = mean.at<double>(0,0);
-        rb_mean.at<double>(1,0) = mean.at<double>(1,0);
-        rb_mean.at<double>(2,0) = mean.at<double>(2,0);
+        if(!turning)
+        {
+            rb_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
+            rb_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
+            rb_mean.at<double>(2,0) = mean.at<double>(2,0);
+        }
+
+        if(is_after)
+        {
+            turning = false;
+        }
 
         return rb_mean;
     }
@@ -662,7 +679,8 @@ public:
         is_after = false;
         index_flag = false;
         next_index = false;
-        
+        turning = false;
+
         landmark_num = 11;
         size = 3 + 2 * landmark_num;
         cur_dest_landmark = 1;
