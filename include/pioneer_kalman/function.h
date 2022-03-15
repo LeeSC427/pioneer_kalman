@@ -2,6 +2,9 @@
 
 class Kalman
 {
+private:
+    ros::NodeHandle nh;
+
 public:
 
     struct landmark
@@ -21,6 +24,13 @@ public:
     ros::Publisher pub_goal;
     ros::Publisher pub_robot_pose;
     
+    ros::Subscriber sub_prev_turn;
+    ros::Subscriber sub_after_turn;
+    ros::Subscriber sub_cmd_vel;
+    ros::Subscriber sub_distance;
+    ros::Subscriber sub_index;
+    ros::Subscriber sub_see_marker;
+
     std::vector<landmark> lm_vec;
     
     bool initial_cmd_vel;
@@ -28,6 +38,8 @@ public:
     bool chk_marker; //to increase landmark index
     bool next_index;
     bool see_marker;
+    bool is_prev;
+    bool is_after;
 
     int landmark_num;
     int size;
@@ -41,6 +53,7 @@ public:
     double Kr, Kl;
     double prev_time;
     double dist_ref;
+    double obs_error;
 
     cv::Mat mean, cov;
 
@@ -65,9 +78,9 @@ public:
 
             time += interval;
 
-            std::cout << "time: " << time << std::endl;
+            // std::cout << "time: " << time << std::endl;
 
-            // ros::spinOnce();
+            ros::spinOnce();
 
             rate.sleep();
         }
@@ -76,61 +89,67 @@ public:
 
     void kalman_loop(cv::Mat &mean, cv::Mat &cov)
     {
-        double state2landmark;
+        // double state2landmark;
         
 
         update_index();
 
         landmark lm;
 
-        for(int i = 0; i < landmark_num; i++)
+        if(cur_dest_landmark <= landmark_num)
         {
-            if(cur_dest_landmark == lm_vec[i].index)
+            for(int i = 0; i < landmark_num; i++)
             {
-                lm = lm_vec[i];
+                if(cur_dest_landmark == lm_vec[i].index)
+                {
+                    lm = lm_vec[i];
+                }
             }
-        }
+            
+            cv::Mat Fx = get_Fx();
+            
+            cv::Mat predicted_mean = mean_prediction(mean, Fx);
+            cv::Mat predicted_cov = cov_prediction(mean, cov, Fx);
+            
+            if(see_marker)
+            {
+                double robot2marker = dist2landmark(lm.x - predicted_mean.at<double>(0,0), lm.y - predicted_mean.at<double>(1,0));
+                
+                cv::Mat h = measurement_model(predicted_mean, robot2marker);
+                
+                cv::Mat J = jacobian(robot2marker, predicted_mean, lm);
+                
+                cv::Mat K = get_gain(J, predicted_cov);
+                
+                double camera2marker = dist2landmark(x_dist2landmark, y_dist2landmark);
+                
+                mean = mean_correction(camera2marker, h, predicted_mean, K);
+                
+                cov = cov_correction(K, J, predicted_cov);
+            }
 
-        cv::Mat Fx = get_Fx();
-        
-        cv::Mat predicted_mean = mean_prediction(mean, Fx);
-        cv::Mat predicted_cov = cov_prediction(mean, cov, Fx);
-        
-        if(see_marker)
-        {
-            double robot2marker = dist2landmark(lm.x - predicted_mean.at<double>(0,0), lm.y - predicted_mean.at<double>(1,0));
-            
-            cv::Mat h = measurement_model(predicted_mean, robot2marker);
-            
-            cv::Mat J = jacobian(robot2marker, predicted_mean, lm);
-            
-            cv::Mat K = get_gain(J, predicted_cov);
-            
-            double camera2marker = dist2landmark(x_dist2landmark, y_dist2landmark);
-            
-            mean = mean_correction(camera2marker, h, predicted_mean, K);
-            
-            cov = cov_correction(K, J, predicted_cov);
-        }
+            else
+            {
+                mean = predicted_mean;
+                cov = predicted_cov;
+            }
 
+            final_mean(mean); 
+
+            cv::Mat rb_pose = robot_mean(mean);
+
+            // check_goal(mean, cov, lm);
+
+            publish_odom(mean);
+
+            publish_robot_pose(rb_pose);
+        }
         else
         {
-            mean = predicted_mean;
-            cov = predicted_cov;
+            std::cout << "====================== MEAN ======================" << std::endl << mean << std::endl;
+            std::cout << "=================== COVARIANCE ===================" << std::endl << cov << std::endl;
         }
 
-        final_mean(mean);
-
-        cv::Mat rb_pose = robot_mean(mean);
-
-        check_goal(mean, cov, lm);
-
-        publish_odom(mean);
-
-        publish_robot_pose(rb_pose);
-
-        std::cout << "mean: " << std::endl << mean << std::endl;
-        std::cout << "cov: " << std::endl << cov << std::endl;
     }
 
 // =====================================================================//
@@ -144,12 +163,16 @@ public:
         lin_vel = msg->linear.x;
         ang_vel = msg->angular.z;
 
+        std::cout << lin_vel << std::endl;
+
         if(!initial_cmd_vel)
-            interval = prev_time - cur_time;
+            interval = cur_time - prev_time;
         else
             initial_cmd_vel = false;
 
         prev_time = cur_time;
+
+        std::cout << "TIME INTERVAL: " << interval << std::endl;
     }
 
     void get_distance2marker(const geometry_msgs::Twist::ConstPtr& msg)
@@ -167,6 +190,16 @@ public:
     void is_seen(const std_msgs::Bool::ConstPtr& msg)
     {
         see_marker = msg->data;
+    }
+
+    void prev_turn(const std_msgs::Bool::ConstPtr& msg)
+    {
+        is_prev = msg->data;
+    }
+
+    void after_turn(const std_msgs::Bool::ConstPtr& msg)
+    {
+        is_after = msg->data;
     }
 
 // =====================================================================//
@@ -190,15 +223,60 @@ public:
         {
             landmark lm;
             lm.index = i;
-            if(i = 1)
+            if(i == 1)
             {
                 lm.x = 0.6;
                 lm.y = 0.0;
             }
-            else
+            else if(i == 2)
             {
-                lm.x = i;
-                lm.y = 0;
+                lm.x = 1.2;
+                lm.y = 0.0;
+            }
+            else if(i == 3)
+            {
+                lm.x = 1.8;
+                lm.y = 0.0;
+            }
+            else if(i == 4)
+            {
+                lm.x = 2.4;
+                lm.y = 0.0;
+            }
+            else if(i == 5)
+            {
+                lm.x = 2.4;
+                lm.y = -0.6;
+            }
+            else if(i == 6)
+            {
+                lm.x = 2.4;
+                lm.y = -1.2;
+            }
+            else if(i == 7)
+            {
+                lm.x = 2.4;
+                lm.y = -1.8;
+            }
+            else if(i == 8)
+            {
+                lm.x = 1.8;
+                lm.y = -1.8;
+            }
+            else if(i == 9)
+            {
+                lm.x = 1.2;
+                lm.y = -1.8;
+            }
+            else if(i == 10)
+            {
+                lm.x = 1.2;
+                lm.y = -2.4;
+            }
+            else if(i == 11)
+            {
+                lm.x = 1.2;
+                lm.y = -3.0;
             }
 
             lm_vec.push_back(lm);
@@ -221,7 +299,7 @@ public:
 
         for(int i = 3; i < size; i++)
         {
-            cov.at<double>(i, i) = 0.0;
+            cov.at<double>(i, i) = 0.025;
         }
 
         std::cout << mean.at<double>(2,0) << std::endl;
@@ -354,8 +432,8 @@ public:
     cv::Mat get_gain(cv::Mat &H, cv::Mat &predict_cov)
     {
         cv::Mat R = cv::Mat::zeros(2, 2, CV_64F);
-        R.at<double>(0,0) = 0.5;
-        R.at<double>(1,1) = 0.5;
+        R.at<double>(0,0) = obs_error;
+        R.at<double>(1,1) = obs_error;
 
         cv::Mat S = H * predict_cov * H.t() + R;
 
@@ -405,29 +483,29 @@ public:
 // ===================== CHECK GOAL & PUBLISH IS_GOAL =================//
 // =====================================================================//
 
-    void check_goal(cv::Mat &mean, cv::Mat &cov, landmark lm)
-    {
-        double x_dist = lm.x - mean.at<double>(0, 0);
-        double y_dist = lm.y - mean.at<double>(1, 0);
-        double dist = dist2landmark(x_dist, y_dist);
+    // void check_goal(cv::Mat &mean, cv::Mat &cov, landmark lm)
+    // {
+    //     double x_dist = lm.x - mean.at<double>(0, 0);
+    //     double y_dist = lm.y - mean.at<double>(1, 0);
+    //     double dist = dist2landmark(x_dist, y_dist);
 
-        std::cout << "mean to landmark: " << dist << std::endl;
+    //     std::cout << "mean to landmark: " << dist << std::endl;
 
-        if(dist < dist_ref)
-        {
-            is_goal = true;
-            std::cout << "ROBOT_POSITION: " << std::endl << mean << std::endl;
-            std::cout << "POSITION_COVARIANCE: " << std::endl << cov << std::endl;
-        }
-        else
-            is_goal = false;
+    //     if(dist < dist_ref)
+    //     {
+    //         is_goal = true;
+    //         std::cout << "ROBOT_POSITION: " << std::endl << mean << std::endl;
+    //         std::cout << "POSITION_COVARIANCE: " << std::endl << cov << std::endl;
+    //     }
+    //     else
+    //         is_goal = false;
         
-        std_msgs::Bool boolean_msg;
+    //     std_msgs::Bool boolean_msg;
 
-        boolean_msg.data = is_goal;
+    //     boolean_msg.data = is_goal;
 
-        pub_goal.publish(boolean_msg);
-    }
+    //     pub_goal.publish(boolean_msg);
+    // }
 
 // =====================================================================//
 // =========================== PUBLISH POSES ===========================//
@@ -485,13 +563,40 @@ public:
 
     void final_mean(cv::Mat &mean)
     {
-        if(mean.at<double>(2,0) < -2.0 * CV_PI)
+        double temp_ang = 0.0;
+        
+        if(mean.at<double>(2,0) > CV_PI)
         {
-            mean.at<double>(2,0) += 2.0 * CV_PI;
+            temp_ang = mean.at<double>(2,0) - CV_PI;
+            mean.at<double>(2,0) = -(CV_PI - temp_ang);
         }
-        else if(mean.at<double>(2,0) > 2.0 * CV_PI)
+        else if(mean.at<double>(2,0) < -CV_PI)
         {
-            mean.at<double>(2,0) -= 2.0 * CV_PI;
+            temp_ang = -mean.at<double>(2,0) - CV_PI;
+            mean.at<double>(2,0) = CV_PI - temp_ang;
+        }
+
+        //BEFORE TURN
+        if(is_prev)
+        {
+            if( -CV_PI / 4.0 <= mean.at<double>(2,0) <= CV_PI / 4.0)
+                mean.at<double>(0,0) -= robot2camera;
+            else if(-CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+                mean.at<double>(1,0) += robot2camera;
+            else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
+                mean.at<double>(0,0) += robot2camera;
+
+            std::cout << "============= BEFORE TURN ==============" << std::endl;
+        }
+        //AFTER TURN
+        if(is_after)
+        {
+            if( -CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+                mean.at<double>(1,0) -= robot2camera;
+            else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
+                mean.at<double>(0,0) -= robot2camera;
+
+            std::cout << "============= AFTER TURN ==============" << std::endl;
         }
     }
 
@@ -503,6 +608,7 @@ public:
     {
         cv::Mat rb_mean = cv::Mat::zeros(3, 1, CV_64F);
 
+
         rb_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
         rb_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
         rb_mean.at<double>(2,0) = mean.at<double>(2,0);
@@ -512,19 +618,32 @@ public:
 
     Kalman()
     {
+        pub_goal = nh.advertise<std_msgs::Bool>("/chk_goal", 1);
+        pub_pose = nh.advertise<geometry_msgs::Pose>("/kalman_mean",1);
+        pub_robot_pose = nh.advertise<geometry_msgs::Pose>("/robot_pose", 1);
+
+        sub_prev_turn = nh.subscribe("/pos_spin_prev", 10, &Kalman::prev_turn, this);
+        sub_after_turn = nh.subscribe("/pos_spin_after", 10, &Kalman::after_turn, this);
+        sub_cmd_vel = nh.subscribe("/RosAria/cmd_vel", 10, &Kalman::get_cmd_vel, this);
+        sub_distance = nh.subscribe("/Marker_distance", 10, &Kalman::get_distance2marker, this);
+        sub_index = nh.subscribe("/Marker_center", 10, &Kalman::get_index_info, this);
+        sub_see_marker = nh.subscribe("/Marker_onsight", 10, &Kalman::is_seen, this);
+
         initial_cmd_vel = true;
         is_goal = false;
         chk_marker = false;
         next_index = false;
         see_marker = false;
-
-        landmark_num = 1;
+        is_prev = false;
+        is_after = false;
+        
+        landmark_num = 11;
         size = 3 + 2 * landmark_num;
         cur_dest_landmark = 1;
     
-        lin_vel = 0.1;
+        lin_vel = 0.0;
         ang_vel = 0.0;
-        interval = 0.1;
+        interval = 0.0;
         x_dist2landmark = 0.0;
         y_dist2landmark = 0.0;
         ang2landmark = 0.0;
@@ -533,7 +652,8 @@ public:
         Kr = 0.5;
         Kl = 0.5;
         prev_time = ros::Time::now().toSec();
-        dist_ref = 0.05;
+        dist_ref = 0.1;
+        obs_error = 0.01;
     }
     ~Kalman()
     {
