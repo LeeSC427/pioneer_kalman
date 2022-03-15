@@ -61,7 +61,7 @@ public:
     {
         double time = 0.0;
 
-        std::cout << "kalman_exec()" << std::endl;
+        // std::cout << "kalman_exec()" << std::endl;
 
         landmark_location();
         
@@ -110,7 +110,7 @@ public:
             
             cv::Mat predicted_mean = mean_prediction(mean, Fx);
             
-            std::cout << predicted_mean.at<double>(0,0) << std::endl;
+            // std::cout << predicted_mean.at<double>(0,0) << std::endl;
 
             cv::Mat predicted_cov = cov_prediction(mean, cov, Fx);
             
@@ -150,7 +150,7 @@ public:
         // else
         // {
             std::cout << "=================== MEAN ===================" << std::endl << mean << std::endl;
-            std::cout << "=================== COVARIANCE ===================" << std::endl << cov << std::endl;
+            // std::cout << "=================== COVARIANCE ===================" << std::endl << cov << std::endl;
         // }
 
     }
@@ -169,13 +169,21 @@ public:
         // std::cout << lin_vel << std::endl;
 
         if(!initial_cmd_vel)
-            interval = cur_time - prev_time;
+            if(cur_time - prev_time > 0.05)
+            {
+                interval = cur_time - prev_time;
+
+                std::cout << "TIME INTERVAL: " << interval << std::endl;
+            }
+            else
+            {
+                std::cout << "HI" << std::endl;
+            }
         else
             initial_cmd_vel = false;
 
         prev_time = cur_time;
 
-        // std::cout << "TIME INTERVAL: " << interval << std::endl;
     }
 
     void get_distance2marker(const geometry_msgs::Twist::ConstPtr& msg)
@@ -341,7 +349,7 @@ public:
 
     cv::Mat mean_prediction(cv::Mat &mean, cv::Mat Fx)
     {
-        std::cout << mean.at<double>(2,0) << std::endl;
+        // std::cout << mean.at<double>(2,0) << std::endl;
 
         cv::Mat mat_temp = cv::Mat::zeros(3, 1, CV_64F);
 
@@ -361,7 +369,7 @@ public:
         Axk.at<double>(1,2) = lin_vel * interval * cos(mean.at<double>(2,0) + ang_vel * interval /2.0);
         
         // std::cout << "Axk_fin" << std::endl;
-        std::cout << Fx.t() << std::endl;
+        // std::cout << Fx.t() << std::endl;
         cv::Mat Ak = cv::Mat::eye(size, size, CV_64F) + Fx.t() * Axk * Fx;
         
         // std::cout << "Ak fin" << std::endl;
