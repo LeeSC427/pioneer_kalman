@@ -456,6 +456,11 @@ public:
 
         std::cout << "mean_correction" << std::endl;
 
+        std::cout << "PM: " << std::endl << predict_mean << std::endl;
+        std::cout << "GAIN: " <<std::endl << K << std::endl;
+        std::cout << "V: " <<std::endl << v << std::endl;
+        
+
         return predict_mean + K * v;
     }
 
