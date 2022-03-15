@@ -42,6 +42,8 @@ public:
     bool index_flag;
     bool next_index;
     bool turning;
+    bool prev_flag;
+    bool after_flag;
 
     int landmark_num;
     int size;
@@ -214,11 +216,17 @@ public:
     void prev_turn(const std_msgs::Bool::ConstPtr& msg)
     {
         is_prev = msg->data;
+
+        if(is_prev)
+            prev_flag = true;
     }
 
     void after_turn(const std_msgs::Bool::ConstPtr& msg)
     {
         is_after = msg->data;
+        
+        if(is_after)
+            after_flag = true;
     }
 
 // =====================================================================//
@@ -639,9 +647,10 @@ public:
 
         cv::Mat temp_mean = cv::Mat::zeros(3, 1, CV_64F);
         
-        if(is_prev)
+        if(prev_flag)
         {
             turning = true;
+            prev_flag = false;
         }
 
         if(!turning)
@@ -651,9 +660,10 @@ public:
             rb_mean.at<double>(2,0) = mean.at<double>(2,0);
         }
 
-        if(is_after)
+        if(after_flag)
         {
             turning = false;
+            after_flag = false;
         }
 
         return rb_mean;
@@ -681,6 +691,8 @@ public:
         index_flag = false;
         next_index = false;
         turning = false;
+        prev_flag = false;
+        after_flag = false;
 
         landmark_num = 11;
         size = 3 + 2 * landmark_num;
