@@ -80,7 +80,7 @@ public:
 
             // std::cout << "time: " << time << std::endl;
 
-            ros::spinOnce();
+            //ros::spinOnce();
 
             rate.sleep();
         }
