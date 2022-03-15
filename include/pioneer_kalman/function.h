@@ -40,6 +40,7 @@ public:
     bool is_prev;
     bool is_after;
     bool index_flag;
+    bool next_index;
 
     int landmark_num;
     int size;
@@ -80,7 +81,7 @@ public:
 
             // std::cout << "time: " << time << std::endl;
 
-            //ros::spinOnce();
+            ros::spinOnce();
 
             rate.sleep();
         }
@@ -195,12 +196,13 @@ public:
 
     void get_index_info(const std_msgs::Bool::ConstPtr& msg)
     {
-        bool next_index = msg->data;
-        if(next_index)
-        {
-            index_flag = true;
-            update_index();
-        }
+        // bool next_index = msg->data;
+        next_index = msg->data;
+        // if(next_index)
+        // {
+        //     index_flag = true;
+        //     update_index();
+        // }
     }
 
     void is_seen(const std_msgs::Bool::ConstPtr& msg)
@@ -224,11 +226,15 @@ public:
 
     void update_index()
     {
-        if(index_flag)
+        if(next_index)
         {
             cur_dest_landmark++;
-            index_flag = false;
         }
+        // if(index_flag)
+        // {
+        //     cur_dest_landmark++;
+        //     index_flag = false;
+        // }
     }
 
 // =====================================================================//
@@ -651,11 +657,11 @@ public:
         initial_cmd_vel = true;
         is_goal = false;
         chk_marker = false;
-        next_index = false;
         see_marker = false;
         is_prev = false;
         is_after = false;
         index_flag = false;
+        next_index = false;
         
         landmark_num = 11;
         size = 3 + 2 * landmark_num;

@@ -21,11 +21,11 @@ int main(int argc, char **argv)
     // ros::Subscriber sub_index = nh.subscribe("/Marker_pass", 10, &Kalman::get_index_info, &kalman);
     // ros::Subscriber sub_see_marker = nh.subscribe("/Marker_onsight", 10, &Kalman::is_seen, &kalman);
     // kalman.pub_pose = nh.advertise<
-    ros::AsyncSpinner spinner(4);
-    spinner.start();
+    // ros::AsyncSpinner spinner(4);
+    // spinner.start();
     kalman.kalman_exec();
     
-    ros::waitForShutdown();
+    // ros::waitForShutdown();
     //ros::spin();
 
     return 0;
