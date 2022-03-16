@@ -627,9 +627,9 @@ public:
         {
                 // temp_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
                 // temp_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
-            if( -CV_PI / 4.0 <= mean.at<double>(2,0) <= CV_PI / 4.0)
+            if( -CV_PI / 4.0 <= mean.at<double>(2,0) && mean.at<double>(2,0) <= CV_PI / 4.0)
                 mean.at<double>(0,0) -= robot2camera;
-            else if(-CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+            else if(-CV_PI / 4.0 > mean.at<double>(2,0) && mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
                 mean.at<double>(1,0) += robot2camera;
             else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
                 mean.at<double>(0,0) += robot2camera;
@@ -638,12 +638,12 @@ public:
             std::cout << "============= BEFORE TURN ==============" << std::endl;
         }
         //AFTER TURN
-        if(is_after)
+        if(cam_after_flag)
         {
-            if( -CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
-                temp_mean.at<double>(1,0) -= robot2camera;
+            if( -CV_PI / 4.0 > mean.at<double>(2,0) && mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+                mean.at<double>(1,0) -= robot2camera;
             else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
-                temp_mean.at<double>(0,0) -= robot2camera;
+                mean.at<double>(0,0) -= robot2camera;
 
             cam_after_flag = false;
             std::cout << "============= AFTER TURN ==============" << std::endl;
