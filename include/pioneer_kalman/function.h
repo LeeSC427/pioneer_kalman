@@ -289,37 +289,37 @@ public:
             else if(i == 5)
             {
                 lm.x = 2.4;
-                lm.y = -0.6;
+                lm.y = -1.2;
             }
             else if(i == 6)
             {
                 lm.x = 2.4;
-                lm.y = -1.2;
+                lm.y = -1.8;
             }
             else if(i == 7)
             {
-                lm.x = 2.4;
+                lm.x = 1.8;
                 lm.y = -1.8;
             }
             else if(i == 8)
             {
-                lm.x = 1.8;
+                lm.x = 1.2;
                 lm.y = -1.8;
             }
             else if(i == 9)
             {
                 lm.x = 1.2;
-                lm.y = -1.8;
+                lm.y = -2.4;
             }
             else if(i == 10)
             {
                 lm.x = 1.2;
-                lm.y = -2.4;
+                lm.y = -3.0;
             }
             else if(i == 11)
             {
                 lm.x = 1.2;
-                lm.y = -3.0;
+                lm.y = -3.6;
             }
 
             lm_vec.push_back(lm);
