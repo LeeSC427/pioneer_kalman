@@ -728,9 +728,9 @@ public:
         y_dist2landmark = 0.0;
         ang2landmark = 0.0;
         robot_width = 0.4;
-        robot2camera = 0.42;
-        Kr = 0.5;
-        Kl = 0.5;
+        robot2camera = 0.4;
+        Kr = 0.1;
+        Kl = 0.1;
         prev_time = ros::Time::now().toSec();
         dist_ref = 0.1;
         obs_error = 0.01;
