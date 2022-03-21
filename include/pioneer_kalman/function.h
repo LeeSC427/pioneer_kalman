@@ -41,6 +41,11 @@ public:
     bool is_after;
     bool index_flag;
     bool next_index;
+    bool turning;
+    bool prev_flag;
+    bool after_flag;
+    bool cam_prev_flag;
+    bool cam_after_flag;
 
     int landmark_num;
     int size;
@@ -57,6 +62,7 @@ public:
     double obs_error;
 
     cv::Mat mean, cov;
+    cv::Mat prev_robot_pos;
 
     void kalman_exec()
     {
@@ -92,7 +98,7 @@ public:
     {
         // double state2landmark;
         
-
+        std::cout << "==================================" << turning << std::endl;
         update_index();
 
         landmark lm;
@@ -198,11 +204,11 @@ public:
     {
         // bool next_index = msg->data;
         next_index = msg->data;
-        // if(next_index)
-        // {
-        //     index_flag = true;
+        if(next_index)
+        {
+            index_flag = true;
         //     update_index();
-        // }
+        }
     }
 
     void is_seen(const std_msgs::Bool::ConstPtr& msg)
@@ -213,11 +219,23 @@ public:
     void prev_turn(const std_msgs::Bool::ConstPtr& msg)
     {
         is_prev = msg->data;
+
+        if(is_prev)
+        {
+            prev_flag = true;
+            cam_prev_flag = true;
+        }
     }
 
     void after_turn(const std_msgs::Bool::ConstPtr& msg)
     {
         is_after = msg->data;
+        
+        if(is_after)
+        {
+            after_flag = true;
+            cam_after_flag = true;
+        }
     }
 
 // =====================================================================//
@@ -226,15 +244,15 @@ public:
 
     void update_index()
     {
-        if(next_index)
-        {
-            cur_dest_landmark++;
-        }
-        // if(index_flag)
+        // if(next_index)
         // {
         //     cur_dest_landmark++;
-        //     index_flag = false;
         // }
+        if(index_flag)
+        {
+            cur_dest_landmark++;
+            index_flag = false;
+        }
     }
 
 // =====================================================================//
@@ -271,37 +289,37 @@ public:
             else if(i == 5)
             {
                 lm.x = 2.4;
-                lm.y = -0.6;
+                lm.y = -1.2;
             }
             else if(i == 6)
             {
                 lm.x = 2.4;
-                lm.y = -1.2;
+                lm.y = -1.8;
             }
             else if(i == 7)
             {
-                lm.x = 2.4;
+                lm.x = 1.8;
                 lm.y = -1.8;
             }
             else if(i == 8)
             {
-                lm.x = 1.8;
+                lm.x = 1.2;
                 lm.y = -1.8;
             }
             else if(i == 9)
             {
                 lm.x = 1.2;
-                lm.y = -1.8;
+                lm.y = -2.4;
             }
             else if(i == 10)
             {
                 lm.x = 1.2;
-                lm.y = -2.4;
+                lm.y = -3.0;
             }
             else if(i == 11)
             {
                 lm.x = 1.2;
-                lm.y = -3.0;
+                lm.y = -3.6;
             }
 
             lm_vec.push_back(lm);
@@ -327,7 +345,7 @@ public:
             cov.at<double>(i, i) = 0.025;
         }
 
-            mean.at<double>(0,0) = robot2camera;
+        mean.at<double>(0,0) = robot2camera;
     }
 
 // =====================================================================//
@@ -353,11 +371,15 @@ public:
 
     cv::Mat mean_prediction(cv::Mat &mean, cv::Mat Fx)
     {
+        // std::cout << mean.at<double>(2,0) << std::endl;
+
         cv::Mat mat_temp = cv::Mat::zeros(3, 1, CV_64F);
 
         mat_temp.at<double>(0,0) = lin_vel * interval * cos(mean.at<double>(2,0) + ang_vel * interval / 2.0);
         mat_temp.at<double>(1,0) = lin_vel * interval * sin(mean.at<double>(2,0) + ang_vel * interval / 2.0);
         mat_temp.at<double>(2,0) = ang_vel * interval;
+
+        // std::cout << "mean_prediction" << std::endl;
 
         return mean + Fx.t() * mat_temp;
     }
@@ -448,6 +470,8 @@ public:
 
         cv::Mat S = H * predict_cov * H.t() + R;
 
+        // std::cout << "get_gain" << std::endl;
+
         return predict_cov * H.t() * S.inv();
     }
 
@@ -463,12 +487,16 @@ public:
 
         cv::Mat v = Z - h;
 
+        // std::cout << "mean_correction" << std::endl;
+
         return predict_mean + K * v;
     }
 
     cv::Mat cov_correction(cv::Mat &K, cv::Mat &J, cv::Mat &predict_cov)
     {
         cv::Mat I = cv::Mat::eye(size,size,CV_64F);
+
+        // std::cout << "cov_correction" << std::endl;
 
         return (I - K * J) * predict_cov;
     }
@@ -581,26 +609,29 @@ public:
             mean.at<double>(2,0) = CV_PI - temp_ang;
         }
 
+        cv::Mat temp_mean = cv::Mat::zeros(size, 1, CV_64F);
         //BEFORE TURN
-        if(is_prev)
+        if(cam_prev_flag)
         {
-            if( -CV_PI / 4.0 <= mean.at<double>(2,0) <= CV_PI / 4.0)
+            if( -CV_PI / 4.0 <= mean.at<double>(2,0) && mean.at<double>(2,0) <= CV_PI / 4.0)
                 mean.at<double>(0,0) -= robot2camera;
-            else if(-CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+            else if(-CV_PI / 4.0 > mean.at<double>(2,0) && mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
                 mean.at<double>(1,0) += robot2camera;
             else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
                 mean.at<double>(0,0) += robot2camera;
 
+            cam_prev_flag = false;
             std::cout << "============= BEFORE TURN ==============" << std::endl;
         }
         //AFTER TURN
-        if(is_after)
+        if(cam_after_flag)
         {
-            if( -CV_PI / 4.0 > mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
+            if( -CV_PI / 4.0 > mean.at<double>(2,0) && mean.at<double>(2,0) >= -3.0 * CV_PI / 4.0)
                 mean.at<double>(1,0) -= robot2camera;
             else if(-3.0 * CV_PI / 4.0 > mean.at<double>(2,0) || 3.0 * CV_PI / 4.0 <= mean.at<double>(2,0))
                 mean.at<double>(0,0) -= robot2camera;
 
+            cam_after_flag = false;
             std::cout << "============= AFTER TURN ==============" << std::endl;
         }
     }
@@ -613,10 +644,34 @@ public:
     {
         cv::Mat rb_mean = cv::Mat::zeros(3, 1, CV_64F);
 
+        cv::Mat temp_mean = cv::Mat::zeros(3, 1, CV_64F);
+        
+        if(prev_flag)
+        {
+            turning = true;
+            prev_flag = false;
+        }
 
-        rb_mean.at<double>(0,0) = mean.at<double>(0,0);
-        rb_mean.at<double>(1,0) = mean.at<double>(1,0);
-        rb_mean.at<double>(2,0) = mean.at<double>(2,0);
+        if(after_flag)
+        {
+            turning = false;
+            after_flag = false;
+        }
+        
+        if(!turning)
+        {
+            rb_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
+            rb_mean.at<double>(1,0) = mean.at<double>(1,0) + robot2camera * sin(mean.at<double>(2,0));
+            rb_mean.at<double>(2,0) = mean.at<double>(2,0);
+        }
+        else
+        {
+            rb_mean = prev_robot_pos;
+            rb_mean.at<double>(2,0) = mean.at<double>(2,0);
+        }
+
+
+        prev_robot_pos = rb_mean;
 
         return rb_mean;
     }
@@ -642,6 +697,11 @@ public:
         is_after = false;
         index_flag = false;
         next_index = false;
+        turning = false;
+        prev_flag = false;
+        after_flag = false;
+        cam_prev_flag = false;
+        cam_after_flag = false;
 
         landmark_num = 11;
         size = 3 + 2 * landmark_num;
@@ -654,12 +714,14 @@ public:
         y_dist2landmark = 0.0;
         ang2landmark = 0.0;
         robot_width = 0.4;
-        robot2camera = 0.42;
-        Kr = 0.5;
-        Kl = 0.5;
+        robot2camera = 0.4;
+        Kr = 0.1;
+        Kl = 0.1;
         prev_time = ros::Time::now().toSec();
         dist_ref = 0.1;
         obs_error = 0.01;
+
+        prev_robot_pos = cv::Mat::zeros(3,1,CV_64F);
     }
     ~Kalman()
     {
