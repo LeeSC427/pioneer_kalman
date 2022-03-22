@@ -661,7 +661,7 @@ public:
         if(!turning)
         {
             rb_mean.at<double>(0,0) = mean.at<double>(0,0) - robot2camera * cos(mean.at<double>(2,0));
-            rb_mean.at<double>(1,0) = mean.at<double>(1,0) + robot2camera * sin(mean.at<double>(2,0));
+            rb_mean.at<double>(1,0) = mean.at<double>(1,0) - robot2camera * sin(mean.at<double>(2,0));
             rb_mean.at<double>(2,0) = mean.at<double>(2,0);
         }
         else
